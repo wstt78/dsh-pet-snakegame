@@ -356,3 +356,37 @@ test('长度不封顶：吃超过参考长度后仍然继续变长', () => {
   step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
   assert.equal(g.snake.targetLength, g.cfg.turnSlowLength + g.cfg.growthPerFood);
 });
+
+
+test('漫游：从吃块/生气退回待机时，障碍物不会留在桌面上', () => {
+  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(51), config: { obstaclesEnabled: true } });
+  g.enterCoursing();
+  assert.ok(g.obstacles.length > 0, 'coursing 应有障碍');
+  g.enterWander(false);
+  assert.deepEqual(g.obstacles, [], '进入漫游必须清空障碍');
+
+  g.enterCoursing();
+  g.enterAngry();
+  assert.deepEqual(g.obstacles, [], '生气动画里也不能有障碍');
+  for (let i = 0; i < 200; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
+  assert.equal(g.state, 'wander');
+  assert.deepEqual(g.obstacles, [], '生气完回漫游仍然没有障碍');
+});
+
+test('死亡冷却：dying 期间按“玩一会儿”也不能绕过 15s 冷却', () => {
+  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(52), config: { obstaclesEnabled: true } });
+  g.enterCoursing();
+  g.cursor = { x: g.snake.x, y: g.snake.y };
+  g.obstacles.push({ x: g.snake.x, y: g.snake.y, r: 30, born: 0 });
+  step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
+  assert.equal(g.state, 'dying');
+  g.requestStart();
+  assert.equal(g.state, 'dying', '死亡动画中不能立即重开');
+
+  for (let i = 0; i < 200; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
+  assert.equal(g.state, 'sleep');
+  assert.ok(g.cooldownUntil > g.now, '失败后必须有冷却');
+
+  step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 99999 });
+  assert.equal(g.state, 'sleep', '冷却未到，空闲再久也不能自动开局');
+});

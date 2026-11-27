@@ -70,8 +70,8 @@ export class Renderer {
       this.drawFood(now);
       this.drawAngryPet(now);
     } else {
-      // 障碍只在“蛇还在场”时画；撞死/收尾/待机一律不画，避免尸体留在桌面上
-      if (g.cfg.obstaclesEnabled && active) this.drawObstacles(now);
+      // 障碍只在吃块状态画；待机漫游哪怕状态里混进障碍也不显示，避免“看得到撞不到”
+      if (g.cfg.obstaclesEnabled && g.state === 'coursing') this.drawObstacles(now);
 
       const snakeAlpha = this.snakeAlpha();
       if (active || fading) {

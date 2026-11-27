@@ -286,7 +286,11 @@ export class PetGame {
     this.death = null;
     this.quiet = null;
     this.tracker.reset();
-    if (withCooldown) this.cooldownUntil = this.now + this.cfg.cooldownMs;
+    if (withCooldown) {
+      this.cooldownUntil = this.now + this.cfg.cooldownMs;
+      // 撞死进冷却时，丢弃“玩一会儿”的残留请求：冷却优先，避免失败后立刻重开
+      this.manualRequest = false;
+    }
     const a = this.petAnchor();
     this.snake.reset(a.x, a.y, -Math.PI * 0.75);
   }
@@ -296,6 +300,8 @@ export class PetGame {
     this.stateT = 0;
     this.manualRequest = false;
     this.foods = [];
+    // 漫游只应该有鲸鱼娘在走路：coursing→angry→wander 不能把障碍物带出来
+    this.obstacles = [];
     this.wanderStartCursor = { x: this.cursor.x, y: this.cursor.y };
     this.snake.reset(this.petAnchor().x, this.petAnchor().y, -Math.PI * 0.62);
     this.pickWanderTarget(true);
@@ -322,6 +328,8 @@ export class PetGame {
   enterDying() {
     this.state = 'dying';
     this.stateT = 0;
+    // 死亡时清掉残留的手动请求，否则 sleep 会立刻重开、绕过收尾冷却
+    this.manualRequest = false;
     this.obstacles = [];
     this.foods = [];
     this.death = { x: this.snake.x, y: this.snake.y, t: this.now };
@@ -335,6 +343,8 @@ export class PetGame {
   enterAngry() {
     this.state = 'angry';
     this.stateT = 0;
+    // 生气动画里不该看到障碍物，清掉；能量块刻意留着给鲸鱼娘“看着吃不到”
+    this.obstacles = [];
     this.angry = { x: this.snake.x, y: this.snake.y };
     this.tracker.reset();
   }
