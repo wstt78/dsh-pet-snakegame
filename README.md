@@ -41,6 +41,17 @@ npm start
 - 测试：`npm test`（node:test，31 条）。
 - 打包：`npm run pack` → `dist\WhaleSnakePet\WhaleSnakePet.exe`（约 360 MB，Electron 全量）。
 
+## 作为 DSH 插件安装
+
+仓库根目录同时是一个 DSH bundle（`package.json` 里的 `dsh.bundle.patch` + `index.mjs`）：
+
+- 在 DSH 的 **插件 → 添加插件** 里选择本仓库目录安装；启用后桌宠随 DSH 启动，停用即关闭。
+- 首次启用会从 GitHub Release 下载 `WhaleSnakePet-win-x64.zip`，解压到
+  `%LOCALAPPDATA%\dsh-pet-snakegame\app\`（约 360 MB，需要网络）。
+- 也可以手动下载同一个 zip 解压，把插件配置里的 `exePath` 指向 `WhaleSnakePet.exe`，
+  或设置环境变量 `DSH_PET_EXE`。
+- 插件配置：`autoStart`（默认 `true`）、`exePath`（默认空）。
+
 ## 怎么玩
 
 | 操作 | 效果 |

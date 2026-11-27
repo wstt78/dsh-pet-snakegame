@@ -1,5 +1,5 @@
 {
-  "name": "whale-snake-pet",
+  "name": "dsh-pet-snakegame",
   "version": "0.1.0",
   "private": true,
   "description": "鲸鱼娘桌宠贪吃蛇：Windows 透明置顶桌面小游戏，空闲变蛇追光标吃 token，工作即安静退场",
@@ -27,5 +27,24 @@
   },
   "devDependencies": {
     "electron": "45.5.0"
-  }
+  },
+  "exports": {
+    ".": "./index.mjs",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "index.mjs",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "docs/DETAIL.md",
+    "README.md",
+    "LICENSE"
+  ]
 }

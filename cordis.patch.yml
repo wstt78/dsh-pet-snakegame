@@ -1,0 +1,6 @@
+- insert:
+    - id: dsh-pet-snakegame
+      name: dsh-pet-snakegame
+      config:
+        autoStart: true
+        exePath: ''
