@@ -29,6 +29,12 @@ foreach ($item in @('src', 'assets', 'bin', 'package.json')) {
   Copy-Item (Join-Path $root $item) $app -Recurse -Force
 }
 
+# 便携版入口是 Electron 的 src/main.js，而仓库根 package.json 的 main 指向 DSH bundle 的 index.mjs（未打包进 app）
+$pkgPath = Join-Path $app 'package.json'
+$env:PET_PKG_PATH = $pkgPath
+node -e "const fs=require('fs');const p=process.env.PET_PKG_PATH;const j=JSON.parse(fs.readFileSync(p,'utf8'));j.main='src/main.js';delete j.dsh;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')"
+	Remove-Item Env:\PET_PKG_PATH
+
 Rename-Item (Join-Path $out 'electron.exe') "$Name.exe"
 
 $readme = @"
