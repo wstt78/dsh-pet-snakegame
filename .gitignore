@@ -1,0 +1,17 @@
+# 依赖与构建产物
+node_modules/
+dist/
+logs/
+
+# 本机配置（含个人立绘选择）
+config.json
+npm-install.log
+
+# 个人语音（用你自己的声音克隆生成，不随仓库分发）
+assets/voice/
+
+# 原始参考截图（带手指/背景，不进入仓库）
+assets/*-src.jpg
+
+# 临时截图
+*.tmp

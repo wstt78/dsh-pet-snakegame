@@ -1,0 +1,31 @@
+{
+  "name": "whale-snake-pet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "鲸鱼娘桌宠贪吃蛇：Windows 透明置顶桌面小游戏，空闲变蛇追光标吃 token，工作即安静退场",
+  "main": "src/main.js",
+  "license": "MIT",
+  "author": "whale-snake-pet contributors",
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "snake-game",
+    "windows",
+    "overlay",
+    "global-input"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "test": "node --test test/",
+    "check": "node scripts/release-check.mjs",
+    "build:helper": "cmd /c scripts\\build-helper.cmd",
+    "pack": "powershell -ExecutionPolicy Bypass -File scripts/pack.ps1"
+  },
+  "devDependencies": {
+    "electron": "45.5.0"
+  }
+}

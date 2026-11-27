@@ -1,0 +1,65 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1230;
+  --panel: #131c42;
+  --line: #24306b;
+  --text: #e7ecff;
+  --muted: #9aa6d6;
+  --accent: #7fb2ff;
+  --ok: #6ee7a8;
+  --err: #ff8f9a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 22px 26px 28px;
+  background: radial-gradient(1200px 600px at 15% -10%, #1b2a66 0%, var(--bg) 55%);
+  color: var(--text);
+  font: 14px/1.55 "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+}
+h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: .5px; }
+h2 { margin: 0 0 12px; font-size: 14px; color: var(--accent); font-weight: 600; }
+.sub { margin: 0; color: var(--muted); }
+section {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: rgba(19, 28, 66, .82);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.pet-row { display: flex; gap: 18px; align-items: center; }
+#preview {
+  width: 120px; height: 150px; object-fit: contain;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.pet-meta { flex: 1; }
+.mono { font-family: Consolas, "Cascadia Mono", monospace; color: var(--muted); margin: 0 0 8px; word-break: break-all; }
+.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
+input[type="number"] {
+  width: 100%; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: #0d1533; color: var(--text);
+  font: inherit;
+}
+input[type="number"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.check {
+  flex-direction: row; align-items: center; gap: 8px;
+  color: var(--text); font-size: 13px; padding: 7px 0;
+}
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.check .hint { margin: 0 0 0 6px; }
+.btn {
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: #1a2554; color: var(--text);
+  font: inherit;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: #2b57b8; border-color: #3f74e0; }
+footer { margin-top: 18px; }
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.actions .hint { margin: 0 0 0 auto; }
+#status { min-height: 22px; margin: 10px 0 0; font-size: 13px; white-space: pre-wrap; }
+#status.ok { color: var(--ok); }
+#status.err { color: var(--err); }

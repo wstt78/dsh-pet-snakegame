@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>鲸鱼娘桌宠贪吃蛇 · 设置</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <header>
+    <h1>鲸鱼娘桌宠贪吃蛇</h1>
+    <p class="sub">改完点保存立即生效；桌面上右键宠物也能打开这个窗口。</p>
+  </header>
+
+  <section>
+    <h2>宠物立绘</h2>
+    <div class="pet-row">
+      <img id="preview" alt="当前立绘预览">
+      <div class="pet-meta">
+        <p id="petPath" class="mono">assets/pet-idle.png</p>
+        <button id="import" class="btn">导入立绘…</button>
+        <p class="hint">支持 PNG / JPG / GIF / WebP。文件会复制到 assets/，不会改动原图。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>行为参数</h2>
+    <div class="grid">
+      <label>空闲多久变蛇（秒）
+        <input id="idleSec" type="number" min="1" max="600" step="1">
+      </label>
+      <label>连续输入窗口（毫秒）
+        <input id="workMs" type="number" min="100" max="5000" step="50">
+      </label>
+      <label>连点几次算工作（5 秒内）
+        <input id="clicks" type="number" min="2" max="10" step="1">
+      </label>
+      <label>光标静止多久退回漫游（秒）
+        <input id="stillSec" type="number" min="0.5" max="60" step="0.5">
+      </label>
+      <label>收尾后冷却（秒）
+        <input id="coolSec" type="number" min="0" max="600" step="1">
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>开关</h2>
+    <label class="check"><input id="inputEnabled" type="checkbox"> 输入探针（工作信号）<span class="hint">关掉后只剩静态桌宠；聊天/工作时建议保持开启</span></label>
+    <label class="check"><input id="rightClickMenu" type="checkbox"> 光标停在宠物上时可右键（临时取消穿透）</label>
+    <label class="check"><input id="obstaclesEnabled" type="checkbox"> 开障碍物（撞到会撞晕收尾）</label>
+  </section>
+
+  <footer>
+    <div class="actions">
+      <button id="save" class="btn primary">保存</button>
+      <button id="reset" class="btn">恢复默认</button>
+      <span class="hint">热键：Ctrl+Alt+S 玩一会儿 · Ctrl+Alt+Shift+Q 退出</span>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+  </footer>
+
+  <script type="module" src="settings.mjs"></script>
+</body>
+</html>

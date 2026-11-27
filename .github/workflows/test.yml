@@ -1,0 +1,18 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Electron 二进制对纯单元测试不是必需的，跳过下载
+      - run: npm ci --ignore-scripts
+      - run: node --test test/
+      - run: node scripts/release-check.mjs
