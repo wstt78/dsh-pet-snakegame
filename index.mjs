@@ -8,7 +8,6 @@ import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import https from 'node:https';
 import path from 'node:path';
 
 const ASSET_NAME = 'WhaleSnakePet-win-x64.zip';
@@ -37,23 +36,16 @@ function resolveExe(config) {
   return null;
 }
 
-function download(url, dest, redirects = 0) {
+function download(url, dest) {
   return new Promise((resolve, reject) => {
-    if (redirects > 5) return reject(new Error('too many redirects'));
-    https.get(url, { headers: { 'user-agent': 'dsh-pet-snakegame' } }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        res.resume();
-        return download(res.headers.location, dest, redirects + 1).then(resolve, reject);
-      }
-      if (res.statusCode !== 200) {
-        res.resume();
-        return reject(new Error(`download failed: HTTP ${res.statusCode}`));
-      }
-      const out = createWriteStream(dest);
-      res.pipe(out);
-      out.on('finish', () => out.close(() => resolve()));
-      out.on('error', reject);
-    }).on('error', reject);
+    // Use the system TLS stack: Node's bundled CA store cannot verify some
+    // corporate/AV root certificates that Windows itself trusts.
+    const child = spawn('curl.exe', ['-L', '--fail', '--silent', '--show-error', '-o', dest, url], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    child.on('error', reject);
+    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`download exited ${code}`))));
   });
 }
 
