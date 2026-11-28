@@ -173,28 +173,6 @@ function createWindow() {
       }, 2500);
     }
 
-    if (process.argv.includes('--drag-test')) {
-      setTimeout(async () => {
-        try {
-          const out = await win.webContents.executeJavaScript(`(() => {
-            const g = window.__pet;
-            g.enterSleep(false);
-            g.cooldownUntil = g.now + 30000;
-            const a = g.petAnchor();
-            const m = (type, x, y) => window.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, button: 0, buttons: type === 'mouseup' ? 0 : 1, bubbles: true }));
-            m('mousedown', a.x, a.y);
-            m('mousemove', a.x - 260, a.y - 180);
-            m('mouseup', a.x - 260, a.y - 180);
-            return { anchor: g.petAnchor(), state: g.state };
-          })()`);
-          await new Promise((r) => setTimeout(r, 700));
-          log('drag-test', JSON.stringify(out), JSON.stringify(config.load(ROOT).anchor));
-        } catch (err) {
-          log('drag-test-fail', err && err.message);
-        }
-      }, 1800);
-    }
-
     if (capturePath) {
       setTimeout(async () => {
         try {
@@ -238,7 +216,7 @@ function createWindow() {
 function setClickThrough(inside) {
   if (!win || win.isDestroyed()) return;
   // 探针关掉时拿不到光标位置，不能把命中区打开（否则可能永远退不回穿透）。
-  const want = cfg.inputEnabled && (cfg.rightClickMenu || cfg.dragEnabled) && !!inside;
+  const want = cfg.inputEnabled && cfg.rightClickMenu && !!inside;
   if (want === hitTesting) return;
   hitTesting = want;
   win.setIgnoreMouseEvents(!want, { forward: true });
@@ -358,15 +336,6 @@ function applyRuntime() {
 }
 
 ipcMain.on('pet:hit-test', (_e, inside) => setClickThrough(!!inside));
-ipcMain.on('pet:set-anchor', (_e, pos) => {
-  try {
-    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
-    applyConfigResult({ anchor: { x: pos.x, y: pos.y } });
-    log('anchor saved', Math.round(pos.x), Math.round(pos.y));
-  } catch (err) {
-    log('anchor save failed', err && err.message);
-  }
-});
 ipcMain.on('pet:menu', () => popupPetMenu());
 
 ipcMain.handle('settings:get', () => ({ config: cfg, defaults: config.DEFAULTS, root: ROOT }));

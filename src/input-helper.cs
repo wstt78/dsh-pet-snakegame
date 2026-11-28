@@ -5,7 +5,7 @@
 // 事件：
 //   {"e":"ready"}
 //   {"e":"tick","t":<ms>,"x":<int>,"y":<int>,"idle":<ms>}   每 poll 毫秒一次
-//   {"e":"key","t":<ms>,"vk":<int>}                         任意按键“新按下”一次（长按自动重复不会重复发；vk 只用于画小键盘高亮）
+//   {"e":"key","t":<ms>}                                    任意按键“新按下”一次（长按自动重复不会重复发）
 //   {"e":"click","t":<ms>,"b":"L|R|M"}                      鼠标按键“新按下”一次
 //
 // 说明：GetAsyncKeyState 轮询只读物理按键状态；GetLastInputInfo 取系统空闲时长；
@@ -77,10 +77,10 @@ internal static class InputHelper
         Emit(Line.ToString());
     }
 
-    private static void EmitKey(long t, int vk)
+    private static void EmitKey(long t)
     {
         Line.Length = 0;
-        Line.Append("{\"e\":\"key\",\"t\":").Append(t).Append(",\"vk\":").Append(vk).Append('}');
+        Line.Append("{\"e\":\"key\",\"t\":").Append(t).Append('}');
         Emit(Line.ToString());
     }
 
@@ -180,7 +180,7 @@ internal static class InputHelper
                 bool down = (GetAsyncKeyState(vk) & 0x8000) != 0;
                 if (down && !keyWasDown[vk])
                 {
-                    EmitKey(t, vk);
+                    EmitKey(t);
                 }
                 keyWasDown[vk] = down;
             }
