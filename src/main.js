@@ -223,6 +223,35 @@ function setClickThrough(inside) {
   log('hit-test', want ? 'interactive' : 'click-through');
 }
 
+const PET_SIZES = [
+  { label: '小（150）', value: 150 },
+  { label: '中（210）', value: 210 },
+  { label: '大（280）', value: 280 },
+];
+
+function saveConfigPatch(patch, tag) {
+  try {
+    cfg = config.save(ROOT, patch);
+    applyRuntime();
+    broadcast();
+    log('config patched', tag || '', JSON.stringify(patch));
+    return cfg;
+  } catch (err) {
+    log('config patch failed', tag || '', err && err.message);
+    status('config-error');
+    return null;
+  }
+}
+
+function petSizeItems() {
+  return PET_SIZES.map((p) => ({
+    label: p.label,
+    type: 'radio',
+    checked: Math.abs(Number(cfg.petSize || 210) - p.value) < 1,
+    click: () => saveConfigPatch({ petSize: p.value }, 'petSize'),
+  }));
+}
+
 function popupPetMenu() {
   if (!win || win.isDestroyed()) return;
   const menu = Menu.buildFromTemplate([
@@ -230,6 +259,7 @@ function popupPetMenu() {
       label: '玩一会儿贪吃蛇',
       click: () => win && win.webContents.send('pet:control', { action: 'start' }),
     },
+    { label: '大小', submenu: petSizeItems() },
     { label: '设置…', click: () => openSettings() },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() },
@@ -337,6 +367,19 @@ function applyRuntime() {
 
 ipcMain.on('pet:hit-test', (_e, inside) => setClickThrough(!!inside));
 ipcMain.on('pet:menu', () => popupPetMenu());
+ipcMain.handle('pet:config-save', (_e, patch) => {
+  try {
+    return { ok: true, config: applyConfigResult(patch) };
+  } catch (err) {
+    log('pet config save failed', err && err.message);
+    return {
+      ok: false,
+      code: 'config.save-failed',
+      error: String((err && err.message) || err),
+      hint: '检查程序目录下的 config.json 是否可写、是否被其它程序占用',
+    };
+  }
+});
 
 ipcMain.handle('settings:get', () => ({ config: cfg, defaults: config.DEFAULTS, root: ROOT }));
 ipcMain.handle('settings:save', (_e, patch) => {
@@ -479,6 +522,7 @@ function buildTrayMenu() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: '玩一会儿贪吃蛇（Ctrl+Alt+S）', click: startGame },
+      { label: '大小', submenu: petSizeItems() },
       { label: '设置…', click: () => openSettings() },
       { type: 'separator' },
       {

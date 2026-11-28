@@ -51,6 +51,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   turnSlowLength: 60,      // 转向减速的参考长度（长度本身不封顶）
   wanderMargin: 120,
   petSize: 210,
+  anchor: null,            // 屏幕坐标 {x,y}；null = 默认右下角
   dyingMs: 2000,
   angryMs: 1400,
   quietMs: 900,
@@ -199,6 +200,8 @@ export class PetGame {
     this.rng = options.rng || mulberry32(0x5eed);
     this.now = 0;
     this.frozen = false;
+    const ac = options.config && options.config.anchor;
+    this.anchor = ac && Number.isFinite(ac.x) && Number.isFinite(ac.y) ? { x: ac.x, y: ac.y } : null;
 
     this.state = 'sleep';
     this.stateT = 0;
@@ -226,12 +229,31 @@ export class PetGame {
     this.death = null;
     this.quiet = null;
     this.obstacles = [];
-    this.stats = { games: 0, deaths: 0, quietExits: 0 };
+    this.stats = { games: 0, deaths: 0, quietExits: 0, stillFails: 0 };
     this.blinkAt = 0;
   }
 
   petAnchor() {
+    if (this.anchor) {
+      return {
+        x: clamp(this.anchor.x, 40, this.width - 40),
+        y: clamp(this.anchor.y, 120, this.height - 40),
+      };
+    }
     return { x: this.width - 132, y: this.height - 78 };
+  }
+
+  /** 拖动后更新锚点（屏幕坐标）；返回实际生效的位置。 */
+  setAnchor(x, y) {
+    this.anchor = {
+      x: Math.round(clamp(Number(x) || 0, 40, this.width - 40)),
+      y: Math.round(clamp(Number(y) || 0, 120, this.height - 40)),
+    };
+    if (this.state === 'sleep') {
+      const a = this.petAnchor();
+      this.snake.reset(a.x, a.y, -Math.PI * 0.75);
+    }
+    return this.petAnchor();
   }
 
   /** 右键命中区：只覆盖立绘本体的矩形，别把整块桌面变成死区。 */
@@ -250,6 +272,14 @@ export class PetGame {
     if (patch.inputEnabled === false) {
       if (this.state !== 'sleep') this.enterSleep(false);
       this.manualRequest = false;
+    }
+    if (patch.anchor !== undefined) {
+      const ac = patch.anchor;
+      this.anchor = ac && Number.isFinite(ac.x) && Number.isFinite(ac.y) ? { x: ac.x, y: ac.y } : null;
+    }
+    if ((patch.anchor !== undefined || patch.petSize !== undefined) && this.state === 'sleep') {
+      const a = this.petAnchor();
+      this.snake.reset(a.x, a.y, -Math.PI * 0.75);
     }
     if (!this.cfg.obstaclesEnabled) this.obstacles = [];
     if (this.state === 'coursing') this.syncItems();
@@ -343,6 +373,8 @@ export class PetGame {
   enterAngry() {
     this.state = 'angry';
     this.stateT = 0;
+    // 光标静止导致的“变回原形”同样记为一次失败
+    this.stats.stillFails = (this.stats.stillFails || 0) + 1;
     // 生气动画里不该看到障碍物，清掉；能量块刻意留着给鲸鱼娘“看着吃不到”
     this.obstacles = [];
     this.angry = { x: this.snake.x, y: this.snake.y };
@@ -579,7 +611,7 @@ export class PetGame {
           break;
         }
         // 气完了就回去漫游（能量块留在原地，不用管）
-        if (this.stateT >= this.cfg.angryMs) this.enterWander(false);
+        if (this.stateT >= this.cfg.angryMs) this.enterSleep(true);
         break;
       }
       case 'wander': {

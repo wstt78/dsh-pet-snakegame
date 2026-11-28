@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   onControl: (handler) => subscribe('pet:control', handler),
   onConfig: (handler) => subscribe('pet:config', handler),
   setHitTest: (inside) => ipcRenderer.send('pet:hit-test', !!inside),
+  saveConfig: (patch) => ipcRenderer.invoke('pet:config-save', patch),
   openMenu: () => ipcRenderer.send('pet:menu'),
   log: (level, message) => ipcRenderer.send('pet:log', { level, message: String(message) }),
 });

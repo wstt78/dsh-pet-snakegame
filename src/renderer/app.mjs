@@ -191,18 +191,63 @@ window.addEventListener('contextmenu', (event) => {
   if (window.petAPI) window.petAPI.openMenu();
 });
 
+let dragState = null;
+
+function petHit(x, y) {
+  const z = game.hitZone();
+  return x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h;
+}
+
 function updateHitTest() {
   if (!window.petAPI || !game.cfg.inputEnabled) return;
-  const z = game.hitZone();
-  const inside =
-    game.state === 'sleep' &&
-    snap.x >= z.x && snap.x <= z.x + z.w &&
-    snap.y >= z.y && snap.y <= z.y + z.h;
+  if (dragState) {
+    if (!lastHit) {
+      lastHit = true;
+      window.petAPI.setHitTest(true);
+    }
+    return;
+  }
+  const interactive = game.state === 'sleep' || game.state === 'wander';
+  const inside = interactive && petHit(snap.x, snap.y);
   if (inside !== lastHit) {
     lastHit = inside;
     window.petAPI.setHitTest(inside);
   }
 }
+
+// 拖动：窗口是全屏透明层，clientX/clientY 就是屏幕坐标；移动的是游戏里的锚点。
+window.addEventListener('pointerdown', (event) => {
+  if (mode !== 'live' || !window.petAPI) return;
+  if (!game.cfg.inputEnabled) return;
+  if (game.state !== 'sleep' && game.state !== 'wander') return;
+  if (!petHit(event.clientX, event.clientY)) return;
+  const a = game.petAnchor();
+  dragState = { dx: event.clientX - a.x, dy: event.clientY - a.y };
+  event.preventDefault();
+});
+
+window.addEventListener('pointermove', (event) => {
+  if (!dragState) return;
+  game.setAnchor(event.clientX - dragState.dx, event.clientY - dragState.dy);
+  updateHitTest();
+});
+
+window.addEventListener('pointerup', () => {
+  if (!dragState) return;
+  dragState = null;
+  const a = game.petAnchor();
+  if (window.petAPI && window.petAPI.saveConfig) {
+    window.petAPI
+      .saveConfig({ anchor: { x: a.x, y: a.y } })
+      .then((res) => {
+        if (res && res.ok === false) {
+          showBanner('位置保存失败：重启后会回到默认位置。\n下一步：检查 config.json 是否可写、是否被占用', 'error', 'config');
+        }
+      })
+      .catch(() => {});
+  }
+  updateHitTest();
+});
 
 // ---------- 演示 ----------
 

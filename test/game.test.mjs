@@ -50,7 +50,7 @@ test('sleep：idle 到 10s 变蛇，漫游途中光标移动进入吃块', () =>
   assert.ok(g.foods.length >= 1, '进入吃块必须生成能量块');
 });
 
-test('coursing：光标静止 3s → 生气动画 → 回漫游', () => {
+test('coursing：光标静止 3s → 生气动画 → 冷却待机（不立刻变蛇）', () => {
   const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(2) });
   g.enterCoursing();
   for (let i = 0; i < 200; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
@@ -61,6 +61,11 @@ test('coursing：光标静止 3s → 生气动画 → 回漫游', () => {
   for (let i = 0; i < 30; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
   assert.ok(Math.hypot(g.foods[0].x - fx, g.foods[0].y - fy) < 0.01, '生气时能量块冻住');
   for (let i = 0; i < 80; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
+  assert.equal(g.state, 'sleep', '生气结束进入待机冷却，而不是直接变蛇');
+  assert.ok(g.cooldownUntil > g.now, '静止失败也要有 15s 冷却');
+  assert.equal(g.stats.stillFails, 1, '静止失败计入失败次数');
+  // 冷却 + 空闲都满足后才会重新开始
+  for (let i = 0; i < 1200; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 10500 });
   assert.equal(g.state, 'wander');
 });
 
@@ -369,8 +374,9 @@ test('漫游：从吃块/生气退回待机时，障碍物不会留在桌面上'
   g.enterAngry();
   assert.deepEqual(g.obstacles, [], '生气动画里也不能有障碍');
   for (let i = 0; i < 200; i++) step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 0 });
-  assert.equal(g.state, 'wander');
-  assert.deepEqual(g.obstacles, [], '生气完回漫游仍然没有障碍');
+  assert.equal(g.state, 'sleep');
+  assert.ok(g.cooldownUntil > g.now, '静止失败后进入冷却');
+  assert.deepEqual(g.obstacles, [], '回到待机后仍然没有障碍');
 });
 
 test('死亡冷却：dying 期间按“玩一会儿”也不能绕过 15s 冷却', () => {

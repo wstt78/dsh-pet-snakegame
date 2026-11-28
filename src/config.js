@@ -9,6 +9,8 @@ const DEFAULTS = Object.freeze({
   rightClickMenu: true,     // 光标停在宠物上时临时取消穿透，右键出菜单
   petImage: 'assets/pet-idle.png', // 相对程序根目录
   obstaclesEnabled: true,   // 障碍数量随吃掉的能量球增加（2026-11-27）
+  petSize: 210,             // 宠物立绘尺寸（像素，120–360）
+  anchor: null,             // 宠物锚点（屏幕坐标）；null = 默认右下角
   idleToWanderMs: 10000,
   workWindowMs: 500,
   clickCount: 3,
@@ -22,6 +24,7 @@ const RANGES = Object.freeze({
   clickCount: [2, 10],
   stillToWanderMs: [500, 60000],
   cooldownMs: [0, 600000],
+  petSize: [120, 360],
 });
 
 const IMAGE_RE = /^assets\/[A-Za-z0-9][A-Za-z0-9._-]*\.(png|jpe?g|gif|webp)$/i;
@@ -41,6 +44,18 @@ function sanitize(patch, base) {
   }
   if (typeof patch.petImage === 'string' && IMAGE_RE.test(patch.petImage)) {
     out.petImage = patch.petImage;
+  }
+  if (patch.anchor === null) {
+    out.anchor = null;
+  } else if (patch.anchor && typeof patch.anchor === 'object') {
+    const ax = Number(patch.anchor.x);
+    const ay = Number(patch.anchor.y);
+    if (Number.isFinite(ax) && Number.isFinite(ay)) {
+      out.anchor = {
+        x: Math.round(Math.min(20000, Math.max(0, ax))),
+        y: Math.round(Math.min(20000, Math.max(0, ay))),
+      };
+    }
   }
   return out;
 }
