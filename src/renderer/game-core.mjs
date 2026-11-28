@@ -271,7 +271,9 @@ export class PetGame {
       if (this.state !== 'sleep') this.enterSleep(false);
       this.manualRequest = false;
     }
-    if (patch.anchor && Number.isFinite(patch.anchor.x) && Number.isFinite(patch.anchor.y)) {
+    if (patch.anchor === null) {
+      this.anchor = { x: this.width - 132, y: this.height - 78 };
+    } else if (patch.anchor && Number.isFinite(patch.anchor.x) && Number.isFinite(patch.anchor.y)) {
       this.anchor = { x: patch.anchor.x, y: patch.anchor.y };
     }
     if (patch.workModeEnabled === false && this.state === 'work') this.enterSleep(false);

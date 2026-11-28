@@ -200,7 +200,7 @@ function createWindow() {
         try {
           if (process.argv.includes('--dump')) {
             const d = await win.webContents.executeJavaScript(
-              "JSON.stringify({ state: window.__pet.state, recent: window.__pet.recentKeys, pose: !!window.__pet.poseSnapshot, hud: window.__pet.hudDemoKeys })"
+              "JSON.stringify({ state: window.__pet.state, recent: window.__pet.recentKeys, pose: !!window.__pet.poseSnapshot, hud: window.__pet.hudDemoKeys, anchor: window.__pet.petAnchor(), w: window.__pet.width, h: window.__pet.height })"
             );
             log('dump', d);
           }
