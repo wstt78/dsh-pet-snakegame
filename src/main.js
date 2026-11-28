@@ -119,6 +119,15 @@ function createWindow() {
   win.setIgnoreMouseEvents(true, { forward: true });
   win.setSkipTaskbar(true);
 
+  // 有些程序（全屏视频、系统工具）会把自己设为置顶，把桌宠压到下面。
+  // 定时重新抬到 screen-saver 层，保证桌宠始终可见；moveTop 不会抢焦点。
+  const keepTopTimer = setInterval(() => {
+    if (!win || win.isDestroyed()) return;
+    win.setAlwaysOnTop(true, 'screen-saver');
+    win.moveTop();
+  }, 2000);
+  keepTopTimer.unref?.();
+
   const query = { pet: cfg.petImage };
   if (isDemo) query.mode = 'demo';
   if (voiceSelftest) query.voicetest = '1';
@@ -133,10 +142,16 @@ function createWindow() {
   win.loadFile(INDEX, { query });
 
   win.once('ready-to-show', () => {
+    // Windows 有时会把超出工作区的窗口压到任务栏高度（1200 -> 1152），
+    // 显示后再按整块屏幕重新对齐一次，避免底部键盘被裁掉。
+    const full = screen.getPrimaryDisplay().bounds;
+    win.setBounds({ x: full.x, y: full.y, width: full.width, height: full.height });
     win.showInactive();
     win.setFocusable(false);
     win.setIgnoreMouseEvents(true, { forward: true });
-    log('overlay shown', JSON.stringify({ bounds: b, demo: isDemo, pose, pet: cfg.petImage }));
+    win.setAlwaysOnTop(true, 'screen-saver');
+    win.moveTop();
+    log('overlay shown', JSON.stringify({ bounds: full, demo: isDemo, pose, pet: cfg.petImage }));
   });
 
   win.webContents.on('did-finish-load', () => {
