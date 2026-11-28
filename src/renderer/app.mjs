@@ -197,15 +197,7 @@ let dragging = false;
 let dragMoved = false;
 let dragOffset = { x: 0, y: 0 };
 
-const restState = () => game.state === 'sleep' || game.state === 'work' || game.state === 'wander';
-
-function sendAnchorHint() {
-  if (!window.petAPI || !window.petAPI.setAnchorHint) return;
-  const a = game.petAnchor();
-  window.petAPI.setAnchorHint({ x: a.x, y: a.y, size: game.cfg.petSize });
-}
-setInterval(sendAnchorHint, 500);
-setTimeout(sendAnchorHint, 300);
+const restState = () => game.state === 'sleep' || game.state === 'work';
 
 function inHitZone(x, y) {
   const z = game.hitZone();
@@ -228,7 +220,6 @@ window.addEventListener('mousemove', (event) => {
   if (dragging) {
     dragMoved = true;
     game.setAnchor(event.clientX + dragOffset.x, event.clientY + dragOffset.y);
-    sendAnchorHint();
     return;
   }
   if (restState() && inHitZone(event.clientX, event.clientY)) {
@@ -248,8 +239,17 @@ window.addEventListener('mouseup', (event) => {
 });
 
 function updateHitTest() {
-  // 命中判定改由主进程按输入探针的全局光标计算，这里只负责鼠标样式。
-  document.body.style.cursor = dragging ? 'grabbing' : '';
+  if (!window.petAPI || !game.cfg.inputEnabled) return;
+  if (dragging) return;
+  const z = game.hitZone();
+  const inside =
+    restState() &&
+    snap.x >= z.x && snap.x <= z.x + z.w &&
+    snap.y >= z.y && snap.y <= z.y + z.h;
+  if (inside !== lastHit) {
+    lastHit = inside;
+    window.petAPI.setHitTest(inside);
+  }
 }
 
 // ---------- 演示 ----------

@@ -101,6 +101,7 @@ export class Renderer {
       else if (g.state === 'quietExit') this.drawQuietPet(now);
       else if (g.state === 'work') {
         this.drawWorkPet(now);
+        this.drawWorkHud(now);
       }
     }
   }
@@ -162,320 +163,68 @@ export class Renderer {
   drawWorkPet(now) {
     const g = this.game;
     const a = g.petAnchor();
-    let recent = (g.recentKeys || []).slice(-3);
-    if (!recent.length && g.poseSnapshot) {
-      recent = [
-        { vk: 0x41, t: now - 210 },
-        { vk: 0x53, t: now - 110 },
-        { vk: 0x44, t: now - 15 },
-      ];
-    }
-    const lastAge = recent.length ? now - recent[recent.length - 1].t : 9999;
-    const pulse = clamp(1 - lastAge / 260, 0, 1);
-    const sway = Math.sin(now / 240) * 0.045 + Math.sin(now / 90) * 0.007;
-    const bob = Math.sin(now / 300) * 2.6 - pulse * 2.2;
-    this.drawPetBody(a.x, a.y + 12 + bob, { scale: 1 + pulse * 0.018, rot: sway });
-    this.drawHappyFace(a, now, pulse);
-    this.drawTypingScene(a, now, recent, pulse);
+    const bob = Math.sin(now / 1200) * 2.4;
+    const breath = 1 + Math.sin(now / 1600) * 0.007;
+    this.drawPetBody(a.x, a.y + 12 + bob, { scale: breath });
   }
 
-  /** 欢快表情：盖住原图的中性眼睛，画开心眯眯眼 + 腮红 + 笑口 */
-  drawHappyFace(a, now, pulse) {
+  /** 工作模式 HUD：60% 小键盘 + 鼠标，按键/左右键按下时短暂高亮。 */
+  drawWorkHud(now) {
     const g = this.game;
     const ctx = this.ctx;
+    const a = g.petAnchor();
     const s = g.cfg.petSize;
-    const bottom = a.y + 12;
-    const eyeY = bottom - s * 0.53;
-    const eyeDx = s * 0.125;
-    const blushY = eyeY + s * 0.06;
-    const blushDx = s * 0.125;
-    const mouthY = eyeY + s * 0.105;
+    const unit = 22;
+    const gap = 3;
+    const step = unit + gap;
+    const kbW = 15 * step - gap;
+    const pad = 12;
+    const panelW = kbW + pad * 2 + 78;
+    const panelH = 5 * step - gap + pad * 2 + 22;
+    const x = clamp(a.x - s * 0.45 - panelW - 10, 12, g.width - panelW - 12);
+    const y = clamp(a.y - panelH - 24, 12, g.height - panelH - 12);
+    const r = 14;
 
     ctx.save();
-    ctx.fillStyle = '#ffe1d0';
-    for (const dx of [-eyeDx, eyeDx]) {
-      ctx.beginPath();
-      ctx.ellipse(a.x + dx, eyeY, s * 0.078, s * 0.058, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.strokeStyle = '#2d3352';
-    ctx.lineWidth = Math.max(2, s * 0.016);
-    ctx.lineCap = 'round';
-    for (const dx of [-eyeDx, eyeDx]) {
-      ctx.beginPath();
-      ctx.arc(a.x + dx, eyeY + s * 0.012, s * 0.04, Math.PI * 1.12, Math.PI * 1.88);
-      ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,140,152,0.38)';
-    for (const dx of [-blushDx, blushDx]) {
-      ctx.beginPath();
-      ctx.ellipse(a.x + dx, blushY, s * 0.036, s * 0.02, 0, 0, TAU);
-      ctx.fill();
-    }
-    const open = 0.5 + pulse * 0.5;
-    ctx.fillStyle = '#7e3a44';
-    ctx.beginPath();
-    ctx.ellipse(a.x, mouthY, s * 0.03, s * 0.033 * open, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#ff9aa4';
-    ctx.beginPath();
-    ctx.ellipse(a.x, mouthY + s * 0.013, s * 0.018, s * 0.014 * open, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = `rgba(255,196,92,${0.55 + pulse * 0.35})`;
-    ctx.font = `${Math.round(s * 0.08)}px "Segoe UI", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText('♪', a.x + s * 0.38, bottom - s * 0.72 + Math.sin(now / 300) * 4);
-    ctx.restore();
-  }
-
-  workRows() {
-    return ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
-  }
-
-  drawTypingScene(a, now, recent, pulse) {
-    const g = this.game;
-    const ctx = this.ctx;
-    const s = g.cfg.petSize;
-    const rows = this.workRows();
-    const kw = Math.round(s * 0.08);
-    const kh = Math.round(s * 0.065);
-    const gap = 2;
-    const step = kw + gap;
-    const kbW = rows[0].length * step - gap;
-    const baseX = a.x - kbW / 2;
-    const boardH = rows.length * kh + (rows.length - 1) * gap;
-    const topY = a.y + 2 - boardH;
-    const rowY = (i) => topY + i * (kh + gap);
-
-    // 尾巴从身后伸出来（先画，藏在键盘后面）
-    this.drawTailBack(a, baseX + kbW * 0.66, rowY(1), now);
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(16,22,40,0.84)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
-    ctx.lineWidth = 1;
-    this.roundRectPath(baseX - 9, topY - 7, kbW + 18, boardH + 14, 9);
-    ctx.fill();
-    ctx.stroke();
-
-    const activeVk = (recent || []).map((k) => k.vk);
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const offset = (kbW - (row.length * step - gap)) / 2;
-      for (let i = 0; i < row.length; i++) {
-        const label = row[i];
-        const vk = this.vkOfLabel(label);
-        const x = baseX + offset + i * step;
-        const y = rowY(r);
-        const idx = activeVk.lastIndexOf(vk);
-        const age = idx >= 0 ? now - recent[idx].t : 9999;
-        const hot = age < 700;
-        const press = hot ? Math.min(2, (700 - age) / 160) : 0;
-        ctx.fillStyle = hot
-          ? `rgba(255,186,80,${0.55 + (1 - age / 700) * 0.4})`
-          : 'rgba(255,255,255,0.10)';
-        this.roundRectPath(x, y + press, kw, kh, 4);
-        ctx.fill();
-        if (!hot) {
-          ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-          ctx.stroke();
-        }
-        ctx.fillStyle = hot ? '#2b1a08' : 'rgba(230,236,255,0.72)';
-        ctx.font = `600 ${Math.max(8, Math.round(kh * 0.52))}px "Segoe UI", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, x + kw / 2, y + press + kh / 2 + 1);
-      }
-    }
-    ctx.restore();
-
-    // 左右手 + 尾巴三下
-    const handY = rowY(2) + kh * 0.55;
-    const leftX = baseX + step * 1.0 + kw / 2;
-    const rightX = baseX + kbW - step * 1.0 - kw / 2;
-    const last = recent[recent.length - 1];
-    const second = recent[recent.length - 2];
-    const third = recent[recent.length - 3];
-    const pressOf = (k, w = 150) => (k && now - k.t < w ? 1 - (now - k.t) / w : 0);
-
-    this.drawHand(leftX, handY, pressOf(third || second), -1);
-    this.drawHand(rightX, handY, pressOf(second || last), 1);
-
-    const tailPress = pressOf(third, 420);
-    this.drawTailTip(baseX + kbW * 0.66, rowY(1), now, tailPress);
-
-    for (let i = 0; i < recent.length; i++) {
-      const k = recent[i];
-      const label = this.labelOfVk(k.vk);
-      if (!label) continue;
-      const age = now - k.t;
-      if (age > 950) continue;
-      const x = baseX + kbW * (0.32 + i * 0.18);
-      const y = topY - 26 - age * 0.045;
-      const alpha = clamp(1 - age / 950, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(255,250,240,0.94)';
-      ctx.strokeStyle = 'rgba(40,44,60,0.18)';
-      ctx.lineWidth = 1;
-      this.roundRectPath(x - 11, y - 11, 22, 22, 7);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#2d3352';
-      ctx.font = `700 ${Math.round(s * 0.062)}px "Segoe UI", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, x, y + 1);
-      ctx.restore();
-    }
-
-    this.drawMiniMouse(baseX - 40, topY + boardH - 34, now);
-  }
-
-  drawHand(x, y, press, side) {
-    const ctx = this.ctx;
-    const s = this.game.cfg.petSize;
-    const lift = press * 8;
-    const r = s * 0.042;
-    ctx.save();
-    // 袖口
-    ctx.fillStyle = '#2b3a66';
-    ctx.beginPath();
-    ctx.ellipse(x + side * 10, y + 12 - lift * 0.3, s * 0.072, s * 0.045, side * 0.4, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = '#e9f0ff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x + side * 3, y + 4 - lift * 0.45, r * 1.22, Math.PI * 0.15, Math.PI * 0.85, false);
-    ctx.stroke();
-    // 手背
-    ctx.fillStyle = '#ffe3d3';
-    ctx.strokeStyle = '#d2a894';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(x, y - lift, r * 1.05, r * 1.15, side * 0.15, 0, TAU);
-    ctx.fill();
-    ctx.stroke();
-    // 三根手指
-    ctx.fillStyle = '#ffd8c4';
-    for (let i = -1; i <= 1; i++) {
-      ctx.beginPath();
-      ctx.ellipse(x + i * r * 0.5, y - lift + r * 0.7, r * 0.2, r * 0.3, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  drawTailBack(a, tx, ty, now) {
-    const g = this.game;
-    const ctx = this.ctx;
-    const s = g.cfg.petSize;
-    const startX = a.x + s * 0.18;
-    const startY = a.y + 12 - s * 0.02;
-    const endX = tx + Math.sin(now / 150) * 3;
-    const endY = ty + 8;
-    ctx.save();
-    ctx.strokeStyle = '#3f6cc0';
-    ctx.lineWidth = Math.max(4, s * 0.02);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.quadraticCurveTo(a.x + s * 0.30, a.y + 12 - s * 0.16, endX, endY);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  drawTailTip(tx, ty, now, press) {
-    const g = this.game;
-    const ctx = this.ctx;
-    const s = g.cfg.petSize;
-    const x = tx + Math.sin(now / 150) * 3;
-    const y = ty + 8 - press * 9;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(-0.5 - press * 0.5);
-    ctx.fillStyle = '#4f7fd8';
-    ctx.strokeStyle = '#24406f';
-    ctx.lineWidth = 1.4;
-    const fl = s * 0.055;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(fl * 0.8, -fl * 0.9, fl * 1.7, -fl * 0.5);
-    ctx.quadraticCurveTo(fl * 1.1, 0, fl * 1.7, fl * 0.5);
-    ctx.quadraticCurveTo(fl * 0.8, fl * 0.9, 0, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  drawMiniMouse(x, y, now) {
-    const ctx = this.ctx;
-    const w = 24;
-    const h = 34;
-    const r = 12;
-    const hot = (btn) => this.clickAge(btn, 240);
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, r);
-    ctx.fillStyle = 'rgba(22,28,46,0.9)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    const half = (hx, b) => {
-      const t = hot(b);
-      if (t <= 0.02) return;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(hx, y, w / 2, h * 0.55);
-      ctx.clip();
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, r);
-      ctx.fillStyle = `rgba(255,186,80,${0.2 + t * 0.65})`;
-      ctx.fill();
-      ctx.restore();
-    };
-    half(x, 'L');
-    half(x + w / 2, 'R');
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y + 2);
-    ctx.lineTo(x + w / 2, y + h * 0.55);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.beginPath();
-    ctx.roundRect(x + w / 2 - 2, y + 6, 4, 8, 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  roundRectPath(x, y, w, h, r) {
-    const ctx = this.ctx;
+    // 阴影
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = 'rgba(10,16,36,0.74)';
     ctx.beginPath();
     ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
+    ctx.arcTo(x + panelW, y, x + panelW, y + panelH, r);
+    ctx.arcTo(x + panelW, y + panelH, x, y + panelH, r);
+    ctx.arcTo(x, y + panelH, x, y, r);
+    ctx.arcTo(x, y, x + panelW, y, r);
     ctx.closePath();
-  }
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(140,178,255,0.34)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
 
-  allWorkKeys() {
-    return WORK_KEYS.flat();
-  }
+    let ry = y + pad;
+    for (const row of WORK_KEYS) {
+      let rx = x + pad;
+      for (const [label, vk, w] of row) {
+        const cw = w * step - gap;
+        this.drawKeycap(rx, ry, cw, unit, label, this.flashAge(vk, 240));
+        rx += w * step;
+      }
+      ry += step;
+    }
 
-  vkOfLabel(label) {
-    for (const k of this.allWorkKeys()) if (k[0] === label) return k[1];
-    return -1;
-  }
+    this.drawMouseHud(x + pad + kbW + 14, y + pad + 6, now);
 
-  labelOfVk(vk) {
-    for (const k of this.allWorkKeys()) if (k[1] === vk) return k[0];
-    if (vk >= 0x30 && vk <= 0x39) return String.fromCharCode(vk);
-    if (vk >= 0x41 && vk <= 0x5a) return String.fromCharCode(vk);
-    if (vk === 0x20) return 'Space';
-    return null;
+    ctx.save();
+    ctx.fillStyle = 'rgba(210,226,255,0.62)';
+    ctx.font = '600 11px "Microsoft YaHei", "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('工作中 · 键鼠映射', x + pad, y + panelH - pad - 6);
+    ctx.restore();
   }
 
   flashAge(vk, win) {
