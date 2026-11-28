@@ -1,6 +1,6 @@
 {
   "name": "dsh-pet-snakegame",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DSH 插件：鲸鱼娘桌宠贪吃蛇——Windows 透明置顶桌面小游戏，空闲变蛇追光标吃 token，工作即安静退场",
   "main": "index.mjs",
   "license": "MIT",
