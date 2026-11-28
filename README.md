@@ -6,9 +6,11 @@
 
 > 原生透明覆盖层 + 全局只读输入探针。不是网页挂件，不抢焦点、不拦截按键、不记录你按了什么。
 
-![尾鳍](docs/snake-tail-v7.png)
+**Whale Snake Pet** is a transparent, always-on-top desktop mini-game for Windows. When you are idle she naps in the corner as a chibi whale girl; once you stop working and move the mouse, she turns into a whale-tailed snake that chases your cursor and eats token orbs. The moment you start typing again, she quietly turns back and slips away.
 
-![20 个障碍](docs/obstacles-20.png)
+Native transparent overlay with a read-only global input probe — not a web widget. She never steals focus, blocks keys, or records what you type.
+
+![鲸鱼娘桌宠贪吃蛇：待机、追光标吃 token、撞晕](assets/screenshots-combo.png)
 
 ## 特性
 
@@ -38,7 +40,7 @@ npm start
 - 如果启动后没有窗口：先确认环境里没有 `ELECTRON_RUN_AS_NODE=1`（某些 Electron 终端会带），或者直接用 `scripts\start.cmd`。
 - 试玩全套状态：`npm run demo`（26 秒自动走完 睡觉 → 漫游 → 追光标 → 撞死 → 收工）。
 - 停止常驻：托盘「退出」，或 `powershell -ExecutionPolicy Bypass -File scripts\stop.ps1`。
-- 测试：`npm test`（node:test，31 条）。
+- 测试：`npm test`（node:test，33 条）。
 - 打包：`npm run pack` → `dist\WhaleSnakePet\WhaleSnakePet.exe`（约 360 MB，Electron 全量）。
 
 ## 作为 DSH 插件安装
