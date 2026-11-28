@@ -246,15 +246,6 @@ export class Renderer {
     const boardH = rows.length * kh + (rows.length - 1) * gap;
     const topY = a.y + 2 - boardH;
     const rowY = (i) => topY + i * (kh + gap);
-    const keyCenter = (label) => {
-      for (let r = 0; r < rows.length; r++) {
-        const row = rows[r];
-        const offset = (kbW - (row.length * step - gap)) / 2;
-        const idx = row.indexOf(label);
-        if (idx >= 0) return { x: baseX + offset + idx * step + kw / 2, y: rowY(r) + kh / 2 };
-      }
-      return null;
-    };
 
     // 尾巴从身后伸出来（先画，藏在键盘后面）
     this.drawTailBack(a, baseX + kbW * 0.66, rowY(1), now);
@@ -299,24 +290,19 @@ export class Renderer {
     ctx.restore();
 
     // 左右手 + 尾巴三下
+    const handY = rowY(2) + kh * 0.55;
+    const leftX = baseX + step * 1.0 + kw / 2;
+    const rightX = baseX + kbW - step * 1.0 - kw / 2;
+    const last = recent[recent.length - 1];
+    const second = recent[recent.length - 2];
+    const third = recent[recent.length - 3];
     const pressOf = (k, w = 150) => (k && now - k.t < w ? 1 - (now - k.t) / w : 0);
-    const k1 = recent[0];
-    const k2 = recent[1];
-    const k3 = recent[2];
-    const posOf = (k) => (k ? keyCenter(this.labelOfVk(k.vk)) : null);
-    const lp = posOf(k1);
-    const rp = posOf(k2);
-    const tp = posOf(k3);
-    const fallbackY = rowY(2) + kh * 0.55;
-    const leftPos = lp || { x: baseX + step * 1.0 + kw / 2, y: fallbackY };
-    const rightPos = rp || { x: baseX + kbW - step * 1.0 - kw / 2, y: fallbackY };
 
-    this.drawHand(leftPos.x, leftPos.y + kh * 0.55, pressOf(k1), -1);
-    this.drawHand(rightPos.x, rightPos.y + kh * 0.55, pressOf(k2), 1);
+    this.drawHand(leftX, handY, pressOf(third || second), -1);
+    this.drawHand(rightX, handY, pressOf(second || last), 1);
 
-    const tailPress = pressOf(k3, 420);
-    const tailPos = tp || { x: baseX + kbW * 0.66, y: rowY(1) + kh / 2 };
-    this.drawTailTip(tailPos.x, tailPos.y - kh * 0.45, now, tailPress);
+    const tailPress = pressOf(third, 420);
+    this.drawTailTip(baseX + kbW * 0.66, rowY(1), now, tailPress);
 
     for (let i = 0; i < recent.length; i++) {
       const k = recent[i];
@@ -324,8 +310,7 @@ export class Renderer {
       if (!label) continue;
       const age = now - k.t;
       if (age > 950) continue;
-      const kp = keyCenter(label);
-      const x = kp ? kp.x : baseX + kbW * (0.32 + i * 0.18);
+      const x = baseX + kbW * (0.32 + i * 0.18);
       const y = topY - 26 - age * 0.045;
       const alpha = clamp(1 - age / 950, 0, 1);
       ctx.save();

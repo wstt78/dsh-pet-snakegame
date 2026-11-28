@@ -44,9 +44,7 @@ function sanitize(patch, base) {
   if (typeof patch.petImage === 'string' && IMAGE_RE.test(patch.petImage)) {
     out.petImage = patch.petImage;
   }
-  if (patch.anchor === null) {
-    out.anchor = null;
-  } else if (patch.anchor && typeof patch.anchor === 'object') {
+  if (patch.anchor && typeof patch.anchor === 'object') {
     const x = Number(patch.anchor.x);
     const y = Number(patch.anchor.y);
     if (Number.isFinite(x) && Number.isFinite(y)) {
