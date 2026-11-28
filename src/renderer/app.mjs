@@ -149,7 +149,7 @@ if (window.petAPI) {
       if (t0 === null) t0 = performance.now() - msg.t;
     } else if (msg.e === 'key' || msg.e === 'click') {
       if (t0 === null) t0 = performance.now() - (msg.t || 0);
-      pending.push({ type: msg.e, t: (msg.t || 0) + t0, b: msg.b });
+      pending.push({ type: msg.e, t: (msg.t || 0) + t0, b: msg.b, vk: msg.vk });
     } else if (msg.e === 'error') {
       showBanner('输入探针出错：工作信号和空闲判定会失效。\n下一步：重启本程序；仍失败看 logs/main.log', 'error', 'probe');
     }
@@ -191,11 +191,59 @@ window.addEventListener('contextmenu', (event) => {
   if (window.petAPI) window.petAPI.openMenu();
 });
 
+// ---------- 拖动 ----------
+// 待机/工作模式下按住宠物就能拖；拖动期间强制保持可交互，松手才落盘。
+let dragging = false;
+let dragMoved = false;
+let dragOffset = { x: 0, y: 0 };
+
+const restState = () => game.state === 'sleep' || game.state === 'work';
+
+function inHitZone(x, y) {
+  const z = game.hitZone();
+  return x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h;
+}
+
+window.addEventListener('mousedown', (event) => {
+  if (event.button !== 0 || !restState() || !window.petAPI) return;
+  if (!inHitZone(event.clientX, event.clientY)) return;
+  const a = game.petAnchor();
+  dragging = true;
+  dragMoved = false;
+  dragOffset = { x: a.x - event.clientX, y: a.y - event.clientY };
+  document.body.style.cursor = 'grabbing';
+  window.petAPI.setHitTest(true);
+  event.preventDefault();
+});
+
+window.addEventListener('mousemove', (event) => {
+  if (dragging) {
+    dragMoved = true;
+    game.setAnchor(event.clientX + dragOffset.x, event.clientY + dragOffset.y);
+    return;
+  }
+  if (restState() && inHitZone(event.clientX, event.clientY)) {
+    document.body.style.cursor = 'grab';
+  } else {
+    document.body.style.cursor = '';
+  }
+});
+
+window.addEventListener('mouseup', (event) => {
+  if (!dragging) return;
+  dragging = false;
+  document.body.style.cursor = restState() && inHitZone(event.clientX, event.clientY) ? 'grab' : '';
+  const a = game.petAnchor();
+  window.petAPI?.setAnchor?.({ x: a.x, y: a.y });
+  window.petAPI?.log?.('drag anchor ' + Math.round(a.x) + ',' + Math.round(a.y) + (dragMoved ? '' : ' (tap)'));
+});
+
 function updateHitTest() {
   if (!window.petAPI || !game.cfg.inputEnabled) return;
+  if (dragging) return;
   const z = game.hitZone();
   const inside =
-    game.state === 'sleep' &&
+    restState() &&
     snap.x >= z.x && snap.x <= z.x + z.w &&
     snap.y >= z.y && snap.y <= z.y + z.h;
   if (inside !== lastHit) {

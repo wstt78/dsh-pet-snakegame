@@ -62,3 +62,16 @@ test('save/load 往返：写入后能读回，且立绘缺失时回落默认', (
   assert.equal(load(root).petImage, 'assets/pet-user.gif');
   assert.equal(saved2.idleToWanderMs, 12000, '未提交的字段保留');
 });
+
+test('anchor：合法坐标取整保留，越界夹住，非法值回落 null', () => {
+  assert.deepEqual(sanitize({ anchor: { x: 100.4, y: 200.6 } }, DEFAULTS).anchor, { x: 100, y: 201 });
+  assert.deepEqual(sanitize({ anchor: { x: -5, y: 30000 } }, DEFAULTS).anchor, { x: 0, y: 20000 });
+  assert.equal(sanitize({ anchor: { x: 'a', y: 1 } }, DEFAULTS).anchor, null);
+  assert.equal(sanitize({ anchor: 'nope' }, DEFAULTS).anchor, null);
+});
+
+test('dragEnabled：布尔可关，默认开启', () => {
+  assert.equal(DEFAULTS.dragEnabled, true);
+  assert.equal(sanitize({ dragEnabled: false }, DEFAULTS).dragEnabled, false);
+  assert.equal(sanitize({ dragEnabled: 'yes' }, DEFAULTS).dragEnabled, true);
+});

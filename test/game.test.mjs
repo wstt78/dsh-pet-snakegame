@@ -92,7 +92,7 @@ test('coursing：掉头受最大转向角限制', () => {
 });
 
 test('工作信号：吃块中连按两下 -> 安静退场 -> 冷却中不自动再起', () => {
-  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(3) });
+  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(3), config: { workModeEnabled: false } });
   g.enterCoursing();
   const x = g.cursor.x;
   const y = g.cursor.y;
@@ -389,4 +389,33 @@ test('死亡冷却：dying 期间按“玩一会儿”也不能绕过 15s 冷却
 
   step(g, 16, { x: g.cursor.x, y: g.cursor.y, idle: 99999 });
   assert.equal(g.state, 'sleep', '冷却未到，空闲再久也不能自动开局');
+});
+
+test('work 状态：连续按键进入工作模式，停手 2.5s 回待机', () => {
+  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(7) });
+  g.frame(16, { x: 100, y: 100, idle: 0, events: [{ type: 'key', t: 100, vk: 0x41 }] });
+  assert.equal(g.state, 'sleep', '单次按键还不算工作');
+  g.frame(16, { x: 100, y: 100, idle: 0, events: [{ type: 'key', t: 300, vk: 0x53 }] });
+  assert.equal(g.state, 'work');
+  assert.equal(g.keyFlash.get(0x53), g.now, '按键 vk 要记下来给 HUD 高亮');
+
+  for (let i = 0; i < 200; i++) g.frame(16, { x: 100, y: 100, idle: 0, events: [] });
+  assert.equal(g.state, 'sleep', '停手超过 workIdleMs 应回待机');
+});
+
+test('anchor：拖动落点会被夹在屏幕内，不跑到看不见的地方', () => {
+  const g = new PetGame({ width: 1920, height: 1200, rng: mulberry32(8) });
+  g.setAnchor(5, 5);
+  const topLeft = g.petAnchor();
+  assert.ok(topLeft.x >= g.cfg.petSize * 0.6 - 0.01);
+  assert.ok(topLeft.y >= g.cfg.petSize * 1.15 - 0.01);
+
+  g.setAnchor(5000, 5000);
+  const bottomRight = g.petAnchor();
+  assert.ok(bottomRight.x <= 1920 - g.cfg.petSize * 0.6 + 0.01);
+  assert.ok(bottomRight.y <= 1200 - 18 + 0.01);
+
+  g.setAnchor(640, 520);
+  g.applyConfig({ anchor: { x: 800, y: 600 } });
+  assert.deepEqual(g.petAnchor(), { x: 800, y: 600 });
 });

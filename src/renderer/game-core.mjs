@@ -14,6 +14,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   inputEnabled: true,      // 全局输入探针总开关（关掉后只剩静态桌宠）
   idleToWanderMs: 10000,   // 鼠标键盘都静止多久后变成蛇
   workWindowMs: 500,       // 两次离散输入间隔 ≤ 此值 = 在工作
+  workModeEnabled: true,   // 工作时显示小键盘 + 鼠标 HUD（0.2.0）
+  workIdleMs: 2500,        // 工作状态里多久没有离散输入就回待机
   clickWindowMs: 5000,     // 连点统计窗口
   clickCount: 3,           // 窗口内点击几次 = 在工作
   stillToWanderMs: 3000,   // 光标静止多久回 wander
@@ -204,6 +206,10 @@ export class PetGame {
     this.stateT = 0;
     this.cooldownUntil = 0;
     this.manualRequest = false;
+    this.lastWorkAt = 0;
+    this.keyFlash = new Map();   // vk -> 最近按下时间（只用来画小键盘高亮）
+    this.clickFlash = new Map(); // L/R/M -> 最近按下时间
+    this.anchor = options.anchor || { x: this.width - 132, y: this.height - 78 };
 
     this.tracker = new InputTracker(this.cfg);
     this.snake = new SnakeBody(this.cfg);
@@ -231,7 +237,20 @@ export class PetGame {
   }
 
   petAnchor() {
-    return { x: this.width - 132, y: this.height - 78 };
+    const a = this.anchor || { x: this.width - 132, y: this.height - 78 };
+    const padX = this.cfg.petSize * 0.6;
+    const padTop = this.cfg.petSize * 1.15;
+    return {
+      x: clamp(a.x, padX, this.width - padX),
+      y: clamp(a.y, padTop, this.height - 18),
+    };
+  }
+
+  /** 拖动后落点：存原始坐标，显示时再夹到屏幕内。 */
+  setAnchor(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return this;
+    this.anchor = { x, y };
+    return this;
   }
 
   /** 右键命中区：只覆盖立绘本体的矩形，别把整块桌面变成死区。 */
@@ -251,6 +270,10 @@ export class PetGame {
       if (this.state !== 'sleep') this.enterSleep(false);
       this.manualRequest = false;
     }
+    if (patch.anchor && Number.isFinite(patch.anchor.x) && Number.isFinite(patch.anchor.y)) {
+      this.anchor = { x: patch.anchor.x, y: patch.anchor.y };
+    }
+    if (patch.workModeEnabled === false && this.state === 'work') this.enterSleep(false);
     if (!this.cfg.obstaclesEnabled) this.obstacles = [];
     if (this.state === 'coursing') this.syncItems();
     this.tracker.reset();
@@ -271,7 +294,7 @@ export class PetGame {
   requestStart() {
     if (this.state === 'sleep') {
       this.enterWander(true);
-    } else if (this.state === 'wander') {
+    } else if (this.state === 'wander' || this.state === 'work') {
       this.enterCoursing();
     } else {
       this.manualRequest = true;
@@ -346,6 +369,22 @@ export class PetGame {
     // 生气动画里不该看到障碍物，清掉；能量块刻意留着给鲸鱼娘“看着吃不到”
     this.obstacles = [];
     this.angry = { x: this.snake.x, y: this.snake.y };
+    this.tracker.reset();
+  }
+
+  /** 0.2.0 工作模式：回到落点，旁边亮起小键盘 + 鼠标，把正在敲的键“映射”出来。 */
+  enterWork() {
+    this.state = 'work';
+    this.stateT = 0;
+    this.foods = [];
+    this.obstacles = [];
+    this.death = null;
+    this.quiet = null;
+    this.manualRequest = false;
+    this.lastWorkAt = this.now;
+    this.stats.workEntries = (this.stats.workEntries || 0) + 1;
+    const a = this.petAnchor();
+    this.snake.reset(a.x, a.y, -Math.PI * 0.75);
     this.tracker.reset();
   }
 
@@ -553,6 +592,19 @@ export class PetGame {
     }
     this.idleMs = typeof snap.idle === 'number' ? snap.idle : this.idleMs;
 
+    // 事件里带 vk / 鼠标键，只用于 HUD 高亮，不参与工作信号判定。
+    for (const ev of snap.events || []) {
+      if (!ev) continue;
+      if (ev.type === 'key' && Number.isFinite(ev.vk)) this.keyFlash.set(ev.vk, this.now);
+      if (ev.type === 'click') this.clickFlash.set(ev.b || 'L', this.now);
+    }
+    if (this.keyFlash.size > 48) {
+      for (const [k, t] of this.keyFlash) if (this.now - t > 800) this.keyFlash.delete(k);
+    }
+    if (this.clickFlash.size > 8) {
+      for (const [k, t] of this.clickFlash) if (this.now - t > 800) this.clickFlash.delete(k);
+    }
+
     this.tracker.push(snap.events, this.now);
     const working = this.tracker.takeWork();
 
@@ -564,6 +616,10 @@ export class PetGame {
 
     switch (this.state) {
       case 'sleep': {
+        if (working && this.cfg.workModeEnabled) {
+          this.enterWork();
+          break;
+        }
         if (this.manualRequest) {
           this.enterWander(true);
           break;
@@ -575,7 +631,8 @@ export class PetGame {
       }
       case 'angry': {
         if (working) {
-          this.enterQuiet('work');
+          if (this.cfg.workModeEnabled) this.enterWork();
+          else this.enterQuiet('work');
           break;
         }
         // 气完了就回去漫游（能量块留在原地，不用管）
@@ -584,7 +641,8 @@ export class PetGame {
       }
       case 'wander': {
         if (working) {
-          this.enterQuiet('work');
+          if (this.cfg.workModeEnabled) this.enterWork();
+          else this.enterQuiet('work');
           break;
         }
         const start = this.wanderStartCursor || this.cursor;
@@ -599,7 +657,8 @@ export class PetGame {
       }
       case 'coursing': {
         if (working) {
-          this.enterQuiet('work');
+          if (this.cfg.workModeEnabled) this.enterWork();
+          else this.enterQuiet('work');
           break;
         }
         if (this.now - this.lastMoveAt >= this.cfg.stillToWanderMs) {
@@ -639,6 +698,11 @@ export class PetGame {
       }
       case 'quietExit': {
         if (this.stateT >= this.cfg.quietMs) this.enterSleep(true);
+        break;
+      }
+      case 'work': {
+        if (working) this.lastWorkAt = this.now;
+        if (this.now - this.lastWorkAt >= this.cfg.workIdleMs) this.enterSleep(false);
         break;
       }
       default:
@@ -742,6 +806,10 @@ export class PetGame {
       this.score = 7; // 演示难度：3 种能量球 + 障碍
       this.syncItems();
       for (const it of [...this.foods, ...this.obstacles]) it.born = -5000;
+    } else if (pose === 'work') {
+      this.state = 'work';
+      this.hudDemoKeys = [0x41, 0x53, 0x44, 0x20]; // A S D + Space
+      this.hudDemoClick = 'L';
     } else if (pose === 'dying') {
       this.state = 'dying';
       this.stateT = 700;
@@ -786,6 +854,7 @@ export class PetGame {
       coursing: '吃块（跟随光标）',
       dying: '撞晕收尾',
       quietExit: '安静退场',
+      work: '工作模式（键鼠映射）',
       angry: '吃不到能量块，生气',
     }[this.state] || this.state;
   }

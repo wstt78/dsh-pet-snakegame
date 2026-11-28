@@ -8,6 +8,8 @@ const DEFAULTS = Object.freeze({
   inputEnabled: true,       // 全局只读输入探针总开关（关掉就只剩静态桌宠）
   rightClickMenu: true,     // 光标停在宠物上时临时取消穿透，右键出菜单
   petImage: 'assets/pet-idle.png', // 相对程序根目录
+  dragEnabled: true,        // 允许按住宠物拖动位置（0.2.0）
+  anchor: null,             // 拖动后的落点 {x,y}；null = 右下角默认位置
   obstaclesEnabled: true,   // 障碍数量随吃掉的能量球增加（2026-11-27）
   idleToWanderMs: 10000,
   workWindowMs: 500,
@@ -36,11 +38,18 @@ function sanitize(patch, base) {
     const [min, max] = RANGES[key];
     out[key] = Math.round(Math.min(max, Math.max(min, n)));
   }
-  for (const key of ['inputEnabled', 'rightClickMenu', 'obstaclesEnabled']) {
+  for (const key of ['inputEnabled', 'rightClickMenu', 'obstaclesEnabled', 'dragEnabled']) {
     if (typeof patch[key] === 'boolean') out[key] = patch[key];
   }
   if (typeof patch.petImage === 'string' && IMAGE_RE.test(patch.petImage)) {
     out.petImage = patch.petImage;
+  }
+  if (patch.anchor && typeof patch.anchor === 'object') {
+    const x = Number(patch.anchor.x);
+    const y = Number(patch.anchor.y);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      out.anchor = { x: Math.round(Math.min(20000, Math.max(0, x))), y: Math.round(Math.min(20000, Math.max(0, y))) };
+    }
   }
   return out;
 }
