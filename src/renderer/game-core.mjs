@@ -208,6 +208,7 @@ export class PetGame {
     this.manualRequest = false;
     this.lastWorkAt = 0;
     this.keyFlash = new Map();   // vk -> 最近按下时间（只用来画小键盘高亮）
+    this.recentKeys = [];        // 最近按下的键，用于“飘出按了什么”
     this.clickFlash = new Map(); // L/R/M -> 最近按下时间
     this.anchor = options.anchor || { x: this.width - 132, y: this.height - 78 };
 
@@ -595,11 +596,15 @@ export class PetGame {
     // 事件里带 vk / 鼠标键，只用于 HUD 高亮，不参与工作信号判定。
     for (const ev of snap.events || []) {
       if (!ev) continue;
-      if (ev.type === 'key' && Number.isFinite(ev.vk)) this.keyFlash.set(ev.vk, this.now);
+      if (ev.type === 'key' && Number.isFinite(ev.vk)) {
+        this.keyFlash.set(ev.vk, this.now);
+        this.recentKeys.push({ vk: ev.vk, t: this.now });
+      }
       if (ev.type === 'click') this.clickFlash.set(ev.b || 'L', this.now);
     }
     if (this.keyFlash.size > 48) {
       for (const [k, t] of this.keyFlash) if (this.now - t > 800) this.keyFlash.delete(k);
+      this.recentKeys = this.recentKeys.filter((k) => this.now - k.t <= 1500);
     }
     if (this.clickFlash.size > 8) {
       for (const [k, t] of this.clickFlash) if (this.now - t > 800) this.clickFlash.delete(k);

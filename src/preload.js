@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   onConfig: (handler) => subscribe('pet:config', handler),
   setHitTest: (inside) => ipcRenderer.send('pet:hit-test', !!inside),
   setAnchor: (pos) => ipcRenderer.send('pet:set-anchor', pos),
+  setAnchorHint: (pos) => ipcRenderer.send('pet:anchor', pos),
   openMenu: () => ipcRenderer.send('pet:menu'),
   log: (level, message) => ipcRenderer.send('pet:log', { level, message: String(message) }),
 });

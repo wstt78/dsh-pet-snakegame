@@ -198,6 +198,12 @@ function createWindow() {
     if (capturePath) {
       setTimeout(async () => {
         try {
+          if (process.argv.includes('--dump')) {
+            const d = await win.webContents.executeJavaScript(
+              "JSON.stringify({ state: window.__pet.state, recent: window.__pet.recentKeys, pose: !!window.__pet.poseSnapshot, hud: window.__pet.hudDemoKeys })"
+            );
+            log('dump', d);
+          }
           const img = await win.webContents.capturePage();
           fs.writeFileSync(capturePath, img.toPNG());
           log('capture', capturePath, JSON.stringify(img.getSize()));
@@ -235,6 +241,27 @@ function createWindow() {
 // ---------- 右键菜单 / 命中区 ----------
 // 渲染层每帧判断光标是否停在宠物上；只有停住时才临时取消穿透，
 // 其它时刻保持 click-through，绝不挡住桌面操作。
+let petRect = null;
+let lastInside = null;
+let lastCursor = null;
+
+function computeInside(x, y) {
+  if (!petRect) return false;
+  const s = petRect.size;
+  const ax = petRect.x;
+  const ay = petRect.y;
+  return x >= ax - s * 0.55 && x <= ax + s * 0.55 && y >= ay - s * 1.05 && y <= ay + s * 0.15;
+}
+
+function refreshHitFromCursor() {
+  if (!lastCursor) return;
+  const inside = computeInside(lastCursor.x, lastCursor.y);
+  if (inside !== lastInside) {
+    lastInside = inside;
+    setClickThrough(inside);
+  }
+}
+
 function setClickThrough(inside) {
   if (!win || win.isDestroyed()) return;
   // 探针关掉时拿不到光标位置，不能把命中区打开（否则可能永远退不回穿透）。
@@ -358,6 +385,12 @@ function applyRuntime() {
 }
 
 ipcMain.on('pet:hit-test', (_e, inside) => setClickThrough(!!inside));
+ipcMain.on('pet:anchor', (_e, pos) => {
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
+  petRect = { x: pos.x, y: pos.y, size: Number.isFinite(pos.size) ? pos.size : 210 };
+  lastInside = null;
+  refreshHitFromCursor();
+});
 ipcMain.on('pet:set-anchor', (_e, pos) => {
   try {
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
@@ -468,7 +501,12 @@ function startHelper() {
   rl.on('line', (line) => {
     if (!line || line[0] !== '{') return;
     try {
-      toRenderer(JSON.parse(line));
+      const msg = JSON.parse(line);
+      if (msg.e === 'tick') {
+        lastCursor = { x: msg.x, y: msg.y };
+        refreshHitFromCursor();
+      }
+      toRenderer(msg);
     } catch (_) {
       // 半行/坏行忽略，不打断主循环
     }
